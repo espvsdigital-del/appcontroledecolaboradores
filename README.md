@@ -63,7 +63,7 @@ Sem variáveis de ambiente o app abre em **modo demonstração**: dados de exemp
 1. **Add New → Project** → importe este repositório do GitHub.
 2. Em **Environment Variables**:
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — o app aceita os dois nomes)
 3. Deploy. Depois, em Supabase → **Authentication → URL Configuration**, informe a URL da Vercel em *Site URL*.
 
 Para desenvolvimento local conectado ao Supabase, copie `.env.example` para `.env.local` e preencha.
