@@ -382,6 +382,16 @@ function impactoNoDestino(
   aPartirDe: string,
 ): ItemImpacto {
   const onde = `${obraNome} › ${destino.nome}`;
+  if (!destino.necessidades.some((n) => n.quantidade > 0)) {
+    return {
+      nivel: "ok",
+      tipo: "destino",
+      titulo: `Alocação em ${onde}`,
+      detalhes: [
+        "A etapa ainda não tem equipe necessária definida — cadastre-a em Obras e pipeline para o app medir falta/excesso.",
+      ],
+    };
+  }
   const demanda = destino.necessidades.find((n) => normFuncao(n.funcao) === normFuncao(colab.funcao));
   if (!demanda || demanda.quantidade <= 0) {
     return {

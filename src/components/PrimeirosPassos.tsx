@@ -16,7 +16,7 @@ export default function PrimeirosPassos({ dados }: { dados: Dados }) {
       acao: "+ Etapa",
     },
     { feito: dados.colaboradores.length > 0, texto: "Cadastrar os colaboradores", href: "/colaboradores", acao: "+ Novo colaborador" },
-    { feito: dados.alocacoes.length > 0, texto: "Alocar cada colaborador numa etapa", href: "/movimentar", acao: "Alocar / movimentar" },
+    { feito: dados.alocacoes.length > 0, texto: "Alocar cada colaborador numa obra/etapa", href: "/movimentar", acao: "Alocar / movimentar" },
   ];
   if (passos.every((p) => p.feito)) return null;
 

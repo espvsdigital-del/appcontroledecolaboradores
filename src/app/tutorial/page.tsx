@@ -20,7 +20,7 @@ const PASSOS: { titulo: string; tela: string; href: string; itens: string[] }[] 
       "Duração em dias corridos.",
       "Defasagem: 0 = começa no dia seguinte ao fim da anterior; negativo = sobreposição (ex.: -10 começa 10 dias antes).",
       "Equipe necessária no formato \"3 Pedreiro, 2 Servente\".",
-      "Sem etapas não é possível alocar ninguém: a alocação é sempre numa etapa.",
+      "Atalho: dá para alocar direto numa obra sem etapas — o app cria a etapa \"Execução geral\". Mas, sem a equipe necessária por etapa, não há análise de falta/atraso.",
     ],
   },
   {
@@ -57,7 +57,7 @@ const PASSOS: { titulo: string; tela: string; href: string; itens: string[] }[] 
 ];
 
 const PROBLEMAS: [string, string][] = [
-  ["A obra não aparece como destino", "Ela não tem etapas. Cadastre ao menos uma em Obras e pipeline → + Etapa."],
+  ["A análise não mostra falta nem atraso", "A etapa não tem \"Equipe necessária\" preenchida (ex.: \"2 Pedreiro, 1 Servente\"). Edite a etapa em Obras e pipeline."],
   ["O botão \"Confirmar alocação\" está cinza", "Falta colaborador ou destino, o período está invertido, ou o impacto é Crítico e falta marcar \"Estou ciente\"."],
   ["Alocado, mas a etapa continua \"equipe incompleta\"", "A função do colaborador não bate com a da etapa, ou o período não cobre a etapa inteira."],
   ["Erro mencionando \"mover_colaborador\"", "O script SQL não foi executado no Supabase. Rode supabase/migrations/0001_init.sql no SQL Editor."],

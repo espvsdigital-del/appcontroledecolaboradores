@@ -6,10 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { useDados } from "@/components/DadosProvider";
 import { CaixaAlerta, ESTILO_NIVEL, NivelBadge } from "@/components/Nivel";
 import { indexarEtapas, planejarTodas } from "@/lib/cronograma";
-import { fmt, hoje as hojeFn, maxData } from "@/lib/datas";
+import { diffDias, fmt, hoje as hojeFn, maxData } from "@/lib/datas";
 import { simularMovimento } from "@/lib/impacto";
+import type { Etapa } from "@/lib/tipos";
 
 const LIBERAR = "__liberar__";
+/** Destino "obra sem etapas": cria automaticamente a etapa "Execução geral" ao confirmar. */
+const OBRA = "obra:";
+const DURACAO_PADRAO = 90;
 
 export default function PaginaMovimentar() {
   return (
@@ -34,14 +38,37 @@ function Movimentar() {
   const [feito, setFeito] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const planos = useMemo(() => planejarTodas(dados), [dados]);
+  // Alocação direta na obra (sem etapas): simula com uma etapa provisória que cobre a obra inteira.
+  const etapaGeral = useMemo<Etapa | null>(() => {
+    if (!destino.startsWith(OBRA)) return null;
+    const obra = dados.obras.find((o) => o.id === destino.slice(OBRA.length));
+    if (!obra) return null;
+    const prazo = obra.data_fim_contratual ? diffDias(obra.data_inicio, obra.data_fim_contratual) + 1 : 0;
+    return {
+      id: crypto.randomUUID(),
+      obra_id: obra.id,
+      nome: "Execução geral",
+      ordem: 1,
+      duracao_dias: prazo > 0 ? prazo : DURACAO_PADRAO,
+      lag_dias: 0,
+      necessidades: [],
+    };
+  }, [destino, dados.obras]);
+  const dadosSim = useMemo(
+    () => (etapaGeral ? { ...dados, etapas: [...dados.etapas, etapaGeral] } : dados),
+    [dados, etapaGeral],
+  );
+  const etapaDestinoId = destino === LIBERAR ? null : etapaGeral?.id ?? destino;
+
+  const planosReais = useMemo(() => planejarTodas(dados), [dados]);
+  const planos = useMemo(() => planejarTodas(dadosSim), [dadosSim]);
   const etapas = useMemo(() => indexarEtapas(planos), [planos]);
   const colab = dados.colaboradores.find((c) => c.id === colabId);
 
   // Ao escolher a etapa de destino, sugere o período de hoje (ou início da etapa) até o fim da etapa.
   // Aplica uma vez por destino (inclusive quando ele vem da URL e os dados ainda estão carregando).
   const periodoSugerido = useRef("");
-  const destinoPlan = etapas.get(destino);
+  const destinoPlan = etapaDestinoId ? etapas.get(etapaDestinoId) : undefined;
   useEffect(() => {
     if (!destinoPlan || periodoSugerido.current === destino) return;
     periodoSugerido.current = destino;
@@ -56,12 +83,12 @@ function Movimentar() {
     () =>
       valido
         ? simularMovimento(
-            dados,
-            { colaborador_id: colabId, etapa_id: destino === LIBERAR ? null : destino, data_inicio: inicio, data_fim: fim },
+            dadosSim,
+            { colaborador_id: colabId, etapa_id: etapaDestinoId, data_inicio: inicio, data_fim: fim },
             hoje,
           )
         : null,
-    [dados, valido, colabId, destino, inicio, fim, hoje],
+    [dadosSim, valido, colabId, etapaDestinoId, inicio, fim, hoje],
   );
 
   const agenda = dados.alocacoes
@@ -71,20 +98,21 @@ function Movimentar() {
   const bloqueado = !resultado || fim < inicio || (resultado.nivel === "critico" && !ciente);
   const pendencias = [
     !colab && "escolha o colaborador",
-    !destino && "escolha o destino (etapa da obra)",
+    !destino && "escolha o destino (obra ou etapa)",
     fim < inicio && "o término do período deve ser igual ou posterior ao início",
     resultado?.nivel === "critico" && !ciente && "marque \"Estou ciente\" para confirmar um impacto crítico",
   ].filter(Boolean) as string[];
-  const obrasSemEtapas = [...planos.values()].filter((p) => p.etapas.length === 0);
+  const obrasSemEtapas = [...planosReais.values()].filter((p) => p.etapas.length === 0);
 
   async function confirmar() {
     if (!resultado || !colab) return;
     setSalvando(true);
     setErro(null);
     try {
+      if (etapaGeral) await repo.salvarEtapa(etapaGeral);
       await repo.moverColaborador({
         colaborador_id: colabId,
-        etapa_id: destino === LIBERAR ? null : destino,
+        etapa_id: etapaDestinoId,
         data_inicio: inicio,
         data_fim: fim,
         motivo,
@@ -121,10 +149,9 @@ function Movimentar() {
             Nenhum colaborador cadastrado. <Link className="underline" href="/colaboradores">Cadastre em Colaboradores</Link>.
           </Aviso>
         )}
-        {etapas.size === 0 && (
+        {dados.obras.length === 0 && (
           <Aviso>
-            Nenhuma etapa cadastrada. A alocação é feita numa <b>etapa</b> da obra:{" "}
-            <Link className="underline" href="/obras">abra Obras e pipeline</Link> e clique em <b>+ Etapa</b>.
+            Nenhuma obra cadastrada. <Link className="underline" href="/obras">Cadastre em Obras e pipeline</Link>.
           </Aviso>
         )}
 
@@ -174,7 +201,17 @@ function Movimentar() {
           <select className="campo" value={destino} onChange={(e) => setDestino(e.target.value)}>
             <option value="">Selecione…</option>
             <option value={LIBERAR}>— Liberar / afastar (férias, atestado, folga) —</option>
-            {[...planos.values()].map((p) => (
+            {obrasSemEtapas.length > 0 && (
+              <optgroup label="Obras (alocação direta)">
+                {obrasSemEtapas.map((p) => (
+                  <option key={p.obra.id} value={OBRA + p.obra.id}>
+                    {p.obra.nome}
+                    {p.obra.cliente ? ` (${p.obra.cliente})` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {[...planosReais.values()].filter((p) => p.etapas.length > 0).map((p) => (
               <optgroup key={p.obra.id} label={`${p.obra.nome} (${p.obra.cliente})`}>
                 {p.etapas.map((e) => (
                   <option key={e.id} value={e.id}>
@@ -184,17 +221,15 @@ function Movimentar() {
                 ))}
               </optgroup>
             ))}
-            {obrasSemEtapas.length > 0 && (
-              <optgroup label="Obras sem etapas (cadastre etapas para alocar)">
-                {obrasSemEtapas.map((p) => (
-                  <option key={p.obra.id} disabled>
-                    {p.obra.nome} — sem etapas
-                  </option>
-                ))}
-              </optgroup>
-            )}
           </select>
         </label>
+        {etapaGeral && destinoPlan && (
+          <p className="rounded-md bg-blue-50 p-2 text-xs text-blue-900">
+            Esta obra ainda não tem etapas: ao confirmar, será criada a etapa <b>&quot;Execução geral&quot;</b> (
+            {fmt(destinoPlan.inicio)} a {fmt(destinoPlan.fim)}). Depois você pode detalhar o pipeline e a equipe
+            necessária em <Link className="underline" href="/obras">Obras e pipeline</Link> para ativar a análise de impacto.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">

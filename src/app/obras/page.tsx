@@ -66,6 +66,11 @@ export default function PaginaObras() {
             </span>
             <NivelBadge nivel={nivel} />
             <div className="ml-auto flex gap-1">
+              {plano.etapas.length === 0 && (
+                <Link className="botao-sec !border-blue-300 !text-blue-700" href={`/movimentar?etapa=obra:${plano.obra.id}`}>
+                  + Alocar na obra
+                </Link>
+              )}
               <button className="botao-sec" onClick={() => setEditando(plano.obra)}>Editar</button>
               <button
                 className="botao-perigo"

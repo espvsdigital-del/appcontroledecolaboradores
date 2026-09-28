@@ -21,8 +21,8 @@ export default function Pipeline({
 }) {
   if (!plano.etapas.length) {
     return <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
-        Nenhuma etapa cadastrada. Em <b>Obras e pipeline</b>, clique em <b>+ Etapa</b> para montar o pipeline — sem
-        etapas não é possível alocar colaboradores nesta obra.
+        Nenhuma etapa cadastrada. Você já pode alocar colaboradores direto na obra (o app cria a etapa
+        &quot;Execução geral&quot;); para a análise de impacto, cadastre as etapas e a equipe necessária com <b>+ Etapa</b>.
       </p>;
   }
   const ini = minData(plano.inicio, hoje);

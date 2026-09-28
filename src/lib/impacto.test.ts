@@ -103,3 +103,12 @@ describe("avaliarPortfolio", () => {
     expect(alertas.some((a) => a.etapaId === "e1")).toBe(false);
   });
 });
+
+describe("destino sem equipe definida", () => {
+  it("é OK e orienta a cadastrar a equipe necessária", () => {
+    const d = base();
+    d.etapas.push({ id: "eg", obra_id: "o2", nome: "Execução geral", ordem: 9, duracao_dias: 30, lag_dias: 0, necessidades: [] });
+    const r = simularMovimento(d, { colaborador_id: "c3", etapa_id: "eg", data_inicio: "2026-10-12", data_fim: "2026-10-20" }, "2026-10-01", id);
+    expect(r.nivel).toBe("ok");
+  });
+});
