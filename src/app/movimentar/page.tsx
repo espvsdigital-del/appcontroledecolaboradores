@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDados } from "@/components/DadosProvider";
 import { CaixaAlerta, ESTILO_NIVEL, NivelBadge } from "@/components/Nivel";
@@ -24,7 +25,7 @@ function Movimentar() {
   const hoje = hojeFn();
 
   const [colabId, setColabId] = useState(params.get("colaborador") ?? "");
-  const [destino, setDestino] = useState("");
+  const [destino, setDestino] = useState(params.get("etapa") ?? "");
   const [inicio, setInicio] = useState(hoje);
   const [fim, setFim] = useState(hoje);
   const [motivo, setMotivo] = useState("");
@@ -38,13 +39,15 @@ function Movimentar() {
   const colab = dados.colaboradores.find((c) => c.id === colabId);
 
   // Ao escolher a etapa de destino, sugere o período de hoje (ou início da etapa) até o fim da etapa.
+  // Aplica uma vez por destino (inclusive quando ele vem da URL e os dados ainda estão carregando).
+  const periodoSugerido = useRef("");
+  const destinoPlan = etapas.get(destino);
   useEffect(() => {
-    const e = etapas.get(destino);
-    if (!e) return;
-    setInicio(maxData(hoje, e.inicio));
-    setFim(maxData(e.fim, maxData(hoje, e.inicio)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destino]);
+    if (!destinoPlan || periodoSugerido.current === destino) return;
+    periodoSugerido.current = destino;
+    setInicio(maxData(hoje, destinoPlan.inicio));
+    setFim(maxData(destinoPlan.fim, maxData(hoje, destinoPlan.inicio)));
+  }, [destino, destinoPlan, hoje]);
 
   useEffect(() => setCiente(false), [colabId, destino, inicio, fim]);
 
@@ -66,6 +69,13 @@ function Movimentar() {
     .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
 
   const bloqueado = !resultado || fim < inicio || (resultado.nivel === "critico" && !ciente);
+  const pendencias = [
+    !colab && "escolha o colaborador",
+    !destino && "escolha o destino (etapa da obra)",
+    fim < inicio && "o término do período deve ser igual ou posterior ao início",
+    resultado?.nivel === "critico" && !ciente && "marque \"Estou ciente\" para confirmar um impacto crítico",
+  ].filter(Boolean) as string[];
+  const obrasSemEtapas = [...planos.values()].filter((p) => p.etapas.length === 0);
 
   async function confirmar() {
     if (!resultado || !colab) return;
@@ -81,11 +91,16 @@ function Movimentar() {
         nivel: resultado.nivel,
         resumo: resultado.resumo,
       });
-      setFeito(`${colab.nome} movimentado(a). ${resultado.resumo}`);
+      setFeito(`${colab.nome} alocado(a) com sucesso. ${resultado.resumo}`);
       setDestino("");
       setMotivo("");
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(
+        /mover_colaborador|function/i.test(msg)
+          ? `${msg} — verifique se o script supabase/migrations/0001_init.sql foi executado no Supabase.`
+          : msg,
+      );
     } finally {
       setSalvando(false);
     }
@@ -96,7 +111,22 @@ function Movimentar() {
   return (
     <div className="grid gap-6 lg:grid-cols-5">
       <section className="cartao space-y-4 lg:col-span-2">
-        <h1 className="titulo-secao">Movimentar colaborador</h1>
+        <h1 className="titulo-secao">Alocar / movimentar colaborador</h1>
+        <p className="-mt-2 text-sm text-slate-500">
+          Use esta tela tanto para a <b>primeira alocação</b> quanto para remanejar alguém.{" "}
+          <Link href="/tutorial" className="text-blue-700 underline">Ver tutorial</Link>
+        </p>
+        {dados.colaboradores.length === 0 && (
+          <Aviso>
+            Nenhum colaborador cadastrado. <Link className="underline" href="/colaboradores">Cadastre em Colaboradores</Link>.
+          </Aviso>
+        )}
+        {etapas.size === 0 && (
+          <Aviso>
+            Nenhuma etapa cadastrada. A alocação é feita numa <b>etapa</b> da obra:{" "}
+            <Link className="underline" href="/obras">abra Obras e pipeline</Link> e clique em <b>+ Etapa</b>.
+          </Aviso>
+        )}
 
         <label className="block">
           <span className="rotulo">Colaborador</span>
@@ -147,13 +177,22 @@ function Movimentar() {
             {[...planos.values()].map((p) => (
               <optgroup key={p.obra.id} label={`${p.obra.nome} (${p.obra.cliente})`}>
                 {p.etapas.map((e) => (
-                  <option key={e.id} value={e.id} disabled={e.fim < hoje}>
+                  <option key={e.id} value={e.id}>
                     {e.nome} · {fmt(e.inicio)} a {fmt(e.fim)}
                     {e.fim < hoje ? " (concluída)" : ""}
                   </option>
                 ))}
               </optgroup>
             ))}
+            {obrasSemEtapas.length > 0 && (
+              <optgroup label="Obras sem etapas (cadastre etapas para alocar)">
+                {obrasSemEtapas.map((p) => (
+                  <option key={p.obra.id} disabled>
+                    {p.obra.nome} — sem etapas
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </label>
 
@@ -185,8 +224,11 @@ function Movimentar() {
           </label>
         )}
 
+        {pendencias.length > 0 && (
+          <p className="text-xs text-slate-500">Para confirmar: {pendencias.join("; ")}.</p>
+        )}
         <button className="botao w-full" disabled={bloqueado || salvando} onClick={confirmar}>
-          {salvando ? "Salvando…" : "Confirmar movimentação"}
+          {salvando ? "Salvando…" : "Confirmar alocação"}
         </button>
         {feito && <p className="rounded-md bg-green-50 p-2 text-sm text-green-800">{feito}</p>}
         {erro && <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{erro}</p>}
@@ -223,4 +265,8 @@ function Movimentar() {
       </section>
     </div>
   );
+}
+
+function Aviso({ children }: { children: React.ReactNode }) {
+  return <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">{children}</p>;
 }

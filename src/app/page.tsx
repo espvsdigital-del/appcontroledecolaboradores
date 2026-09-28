@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useDados } from "@/components/DadosProvider";
 import { CaixaAlerta, NivelBadge } from "@/components/Nivel";
 import Pipeline from "@/components/Pipeline";
+import PrimeirosPassos from "@/components/PrimeirosPassos";
 import { fmt, hoje as hojeFn, plural } from "@/lib/datas";
 import { avaliarPortfolio, localizacaoNoDia } from "@/lib/impacto";
 
@@ -36,6 +37,7 @@ export default function Painel() {
 
   return (
     <div className="space-y-6">
+      <PrimeirosPassos dados={dados} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi rotulo="Obras em andamento" valor={obrasEmAndamento.length} />
         <Kpi rotulo="Colaboradores ativos" valor={ativos.length} />

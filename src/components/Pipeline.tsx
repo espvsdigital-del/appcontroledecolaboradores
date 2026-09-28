@@ -20,7 +20,10 @@ export default function Pipeline({
   hoje: string;
 }) {
   if (!plano.etapas.length) {
-    return <p className="text-sm text-slate-500">Nenhuma etapa cadastrada.</p>;
+    return <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+        Nenhuma etapa cadastrada. Em <b>Obras e pipeline</b>, clique em <b>+ Etapa</b> para montar o pipeline — sem
+        etapas não é possível alocar colaboradores nesta obra.
+      </p>;
   }
   const ini = minData(plano.inicio, hoje);
   const fim = maxData(plano.fimPrevisto, plano.obra.data_fim_contratual ?? plano.fimPrevisto);

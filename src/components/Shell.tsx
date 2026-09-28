@@ -7,10 +7,11 @@ import { useDados } from "./DadosProvider";
 
 const MENU = [
   { href: "/", rotulo: "Painel" },
-  { href: "/movimentar", rotulo: "Movimentar" },
+  { href: "/movimentar", rotulo: "Alocar / movimentar" },
   { href: "/obras", rotulo: "Obras e pipeline" },
   { href: "/colaboradores", rotulo: "Colaboradores" },
   { href: "/historico", rotulo: "Histórico" },
+  { href: "/tutorial", rotulo: "Tutorial" },
 ];
 
 export default function Shell({ children }: { children: React.ReactNode }) {

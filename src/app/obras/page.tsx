@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useDados } from "@/components/DadosProvider";
 import { NivelBadge } from "@/components/Nivel";
@@ -230,6 +231,9 @@ function LinhaEtapa({
         <td className="py-1.5 pr-2">{necessidadesParaTexto(etapa.necessidades) || <span className="text-slate-400">—</span>}</td>
         <td className="whitespace-nowrap py-1.5 pr-2 text-slate-500">{plan ? `${fmt(plan.inicio)} – ${fmt(plan.fim)}` : ""}</td>
         <td className="whitespace-nowrap py-1.5 text-right">
+          <Link className="botao-sec mr-1 !border-blue-300 !text-blue-700" href={`/movimentar?etapa=${etapa.id}`} title="Alocar colaborador nesta etapa">
+            + Alocar
+          </Link>
           <button className="botao-sec" onClick={() => { setE(etapa); setNec(necessidadesParaTexto(etapa.necessidades)); setEdit(true); }}>Editar</button>
           <button className="botao-perigo" onClick={() => confirm(`Excluir a etapa "${etapa.nome}" e suas alocações?`) && onExcluir(etapa.id)}>✕</button>
         </td>
